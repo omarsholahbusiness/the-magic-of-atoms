@@ -48,11 +48,15 @@ export async function PATCH(
         });
 
         if (!wasPublished && publishedCourse.isPublished) {
-            notifyNewCoursePublished({
-                id: publishedCourse.id,
-                title: publishedCourse.title,
-                tags: course.tags,
-            }).catch((err) => console.error("[NOTIFY_NEW_COURSE]", err));
+            try {
+                await notifyNewCoursePublished({
+                    id: publishedCourse.id,
+                    title: publishedCourse.title,
+                    tags: course.tags,
+                });
+            } catch (err) {
+                console.error("[NOTIFY_NEW_COURSE]", err);
+            }
         }
 
         return NextResponse.json(publishedCourse);

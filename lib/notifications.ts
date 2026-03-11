@@ -25,6 +25,7 @@ export async function sendPushToUser(
   const subscriptions = await db.pushSubscription.findMany({
     where: { userId },
   });
+  if (subscriptions.length === 0) return;
 
   const payloadStr = JSON.stringify(payload);
 
@@ -45,8 +46,12 @@ export async function sendPushToUser(
   );
   const toRemove: string[] = [];
   results.forEach((r, i) => {
-    if (r.status === "rejected" && r.reason?.statusCode && [404, 410].includes(r.reason.statusCode)) {
-      toRemove.push(subscriptions[i].id);
+    if (r.status === "rejected") {
+      const err = r.reason as { statusCode?: number; body?: string } | undefined;
+      console.error("[PUSH_SEND_ERROR]", { userId, statusCode: err?.statusCode, body: err?.body });
+      if (err?.statusCode && [404, 410].includes(err.statusCode)) {
+        toRemove.push(subscriptions[i].id);
+      }
     }
   });
   if (toRemove.length) {
@@ -63,7 +68,10 @@ export async function notifyNewCoursePublished(course: {
   title: string;
   tags: { tagId: string }[];
 }): Promise<void> {
-  if (!isPushConfigured()) return;
+  if (!isPushConfigured()) {
+    console.warn("[NOTIFY_NEW_COURSE] Push not configured: check VAPID env vars on Vercel");
+    return;
+  }
 
   const tagIds = course.tags.map((t) => t.tagId);
 
@@ -81,11 +89,28 @@ export async function notifyNewCoursePublished(course: {
           select: { id: true },
         }).then((u) => u.map((x) => x.id));
 
+  const subsCount = await db.pushSubscription.count({
+    where: { userId: { in: userIds } },
+  });
+  console.log("[NOTIFY_NEW_COURSE]", { courseId: course.id, userIds: userIds.length, subscriptions: subsCount });
+
   const payload = {
     title: "كورس جديد متاح",
     body: course.title,
     url: `/dashboard/search`,
   };
+
+  const notificationDelegate = (db as { notification?: { createMany: (args: { data: { userId: string; title: string; body: string | null; url: string | null }[] }) => Promise<unknown> } }).notification;
+  if (notificationDelegate) {
+    await notificationDelegate.createMany({
+      data: userIds.map((userId) => ({
+        userId,
+        title: payload.title,
+        body: payload.body,
+        url: payload.url,
+      })),
+    });
+  }
 
   await Promise.all(
     userIds.map((userId) => sendPushToUser(userId, payload))

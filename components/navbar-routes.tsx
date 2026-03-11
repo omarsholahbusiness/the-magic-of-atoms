@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button"
 import { LogOut } from "lucide-react";
+import { NavbarNotificationIcon } from "./navbar-notification-icon";
 import Link from "next/link";
 import { UserButton } from "./user-button";
 import { useSession, signOut } from "next-auth/react";
@@ -26,6 +27,7 @@ export const NavbarRoutes = () => {
 
     return (
         <div className="flex items-center gap-x-2 rtl:mr-auto ltr:ml-auto">
+            {session?.user && <NavbarNotificationIcon />}
             {/* Logout button for all user types */}
             {session?.user && (
                 <LoadingButton 

@@ -52,6 +52,7 @@ model User {
   usedChapterCodes        ChapterCode[] @relation("ChapterCodeUser")
   chapterAccesses         ChapterAccess[]
   pushSubscriptions       PushSubscription[]
+  notifications           Notification[]
 }
 
 model PushSubscription {
@@ -65,6 +66,20 @@ model PushSubscription {
 
   @@unique([userId, endpoint])
   @@index([userId])
+}
+
+model Notification {
+  id        String    @id @default(uuid())
+  userId    String
+  title     String    @db.Text
+  body      String?   @db.Text
+  url       String?   @db.Text
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, readAt])
 }
 
 model Course {
