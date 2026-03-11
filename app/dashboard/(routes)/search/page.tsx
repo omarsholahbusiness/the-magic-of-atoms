@@ -29,12 +29,21 @@ export default async function SearchPage({
     const resolvedParams = await searchParams;
     const title = typeof resolvedParams.title === 'string' ? resolvedParams.title : '';
 
-    const courses = await db.course.findMany({
+    // Students only see courses matching their grade tag; if no grade tag, show none
+    const gradeTagId = session.user.role === "USER" ? (await db.user.findUnique({
+        where: { id: session.user.id },
+        select: { gradeTagId: true },
+    }))?.gradeTagId : null;
+
+    const courses = (session.user.role === "USER" && !gradeTagId)
+        ? []
+        : await db.course.findMany({
         where: {
             isPublished: true,
-            title: {
-                contains: title,
-            }
+            ...(title ? { title: { contains: title } } : {}),
+            ...(session.user.role === "USER" && gradeTagId
+                ? { OR: [{ tags: { none: {} } }, { tags: { some: { tagId: gradeTagId } } }] }
+                : {}),
         },
         include: {
             chapters: {
@@ -53,8 +62,7 @@ export default async function SearchPage({
         },
         orderBy: {
             createdAt: "desc",
-        }
-    ,
+        },
         cacheStrategy: process.env.NODE_ENV === "production" ? { ttl: 60 } : undefined,
     });
 

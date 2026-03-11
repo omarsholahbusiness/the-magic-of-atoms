@@ -1,10 +1,17 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import Link from "next/link";
 import axios, { AxiosError } from "axios";
@@ -22,10 +29,12 @@ export default function SignUpPage() {
   const [formData, setFormData] = useState({
     fullName: "",
     phoneNumber: "",
-    parentPhoneNumber: "",
     password: "",
     confirmPassword: "",
+    gradeTagId: "",
   });
+  const [courseTags, setCourseTags] = useState<{ id: string; name: string }[]>([]);
+  const [tagsLoading, setTagsLoading] = useState(true);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -44,6 +53,12 @@ export default function SignUpPage() {
 
   const passwordChecks = validatePasswords();
 
+  useEffect(() => {
+    axios.get("/api/course-tags").then((res) => {
+      setCourseTags(res.data);
+    }).catch(() => {}).finally(() => setTagsLoading(false));
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
@@ -60,10 +75,20 @@ export default function SignUpPage() {
       return;
     }
 
+    if (!formData.gradeTagId) {
+      toast.error("يرجى اختيار الصف");
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const response = await axios.post("/api/auth/register", {
-        ...formData,
+        fullName: formData.fullName,
+        phoneNumber: formData.phoneNumber,
+        password: formData.password,
+        confirmPassword: formData.confirmPassword,
         recaptchaToken,
+        gradeTagId: formData.gradeTagId,
       });
       
       if (response.data.success) {
@@ -76,10 +101,6 @@ export default function SignUpPage() {
         const errorMessage = axiosError.response.data as string;
         if (errorMessage.includes("Phone number already exists")) {
           toast.error("رقم الهاتف مسجل مسبقاً");
-        } else if (errorMessage.includes("Parent phone number already exists")) {
-          toast.error("رقم هاتف الوالد مسجل مسبقاً");
-        } else if (errorMessage.includes("Phone number cannot be the same as parent phone number")) {
-          toast.error("رقم الهاتف لا يمكن أن يكون نفس رقم هاتف الوالد");
         } else if (errorMessage.includes("Passwords do not match")) {
           toast.error("كلمات المرور غير متطابقة");
         } else if (errorMessage.includes("reCAPTCHA")) {
@@ -177,19 +198,29 @@ export default function SignUpPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="parentPhoneNumber">رقم هاتف الوالد</Label>
-              <Input
-                id="parentPhoneNumber"
-                name="parentPhoneNumber"
-                type="tel"
-                autoComplete="tel"
-                required
-                disabled={isLoading}
-                className="h-10"
-                value={formData.parentPhoneNumber}
-                onChange={handleInputChange}
-                placeholder="+20XXXXXXXXXX"
-              />
+              <Label htmlFor="gradeTagId">الصف</Label>
+              <Select
+                value={formData.gradeTagId || undefined}
+                onValueChange={(value) => setFormData((prev) => ({ ...prev, gradeTagId: value }))}
+                disabled={isLoading || tagsLoading}
+              >
+                <SelectTrigger id="gradeTagId" className="h-10 w-full">
+                  <SelectValue placeholder="اختر الصف..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {courseTags.map((tag) => (
+                    <SelectItem key={tag.id} value={tag.id}>
+                      {tag.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {tagsLoading && (
+                <p className="text-xs text-muted-foreground">جاري تحميل الصفوف...</p>
+              )}
+              {!tagsLoading && courseTags.length === 0 && (
+                <p className="text-xs text-muted-foreground">لا توجد صفوف متاحة. تواصل مع الإدارة.</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">كلمة المرور</Label>
@@ -278,7 +309,7 @@ export default function SignUpPage() {
             <Button
               type="submit"
               className="w-full h-10 bg-brand hover:bg-brand/90 text-white"
-              disabled={isLoading || !passwordChecks.isValid || !recaptchaToken}
+              disabled={isLoading || !passwordChecks.isValid || !recaptchaToken || !formData.gradeTagId}
             >
               {isLoading ? "جاري إنشاء الحساب..." : "إنشاء حساب"}
             </Button>

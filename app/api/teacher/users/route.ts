@@ -29,9 +29,10 @@ export async function GET(req: NextRequest) {
                 id: true,
                 fullName: true,
                 phoneNumber: true,
-                parentPhoneNumber: true,
                 role: true,
                 balance: true,
+                gradeTagId: true,
+                gradeTag: { select: { id: true, name: true } },
                 createdAt: true,
                 updatedAt: true,
                 _count: {

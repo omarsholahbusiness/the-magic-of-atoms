@@ -1,11 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import { Eye, EyeOff, UserPlus, ArrowLeft, CheckCircle } from "lucide-react";
 import Link from "next/link";
@@ -24,12 +31,13 @@ export default function CreateAccountPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [createdUser, setCreatedUser] = useState<CreatedUser | null>(null);
+  const [courseTags, setCourseTags] = useState<{ id: string; name: string }[]>([]);
   const [formData, setFormData] = useState({
     fullName: "",
     phoneNumber: "",
-    parentPhoneNumber: "",
     password: "",
     confirmPassword: "",
+    gradeTagId: "",
   });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -49,6 +57,10 @@ export default function CreateAccountPage() {
 
   const passwordChecks = validatePasswords();
 
+  useEffect(() => {
+    axios.get("/api/course-tags").then((res) => setCourseTags(res.data)).catch(() => setCourseTags([]));
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
@@ -59,8 +71,20 @@ export default function CreateAccountPage() {
       return;
     }
 
+    if (!formData.gradeTagId) {
+      toast.error("يرجى اختيار الصف");
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      const response = await axios.post("/api/teacher/create-account", formData);
+      const response = await axios.post("/api/teacher/create-account", {
+        fullName: formData.fullName,
+        phoneNumber: formData.phoneNumber,
+        password: formData.password,
+        confirmPassword: formData.confirmPassword,
+        gradeTagId: formData.gradeTagId,
+      });
       
       if (response.data.success) {
         setCreatedUser(response.data.user);
@@ -69,9 +93,9 @@ export default function CreateAccountPage() {
         setFormData({
           fullName: "",
           phoneNumber: "",
-          parentPhoneNumber: "",
           password: "",
           confirmPassword: "",
+          gradeTagId: "",
         });
       }
     } catch (error) {
@@ -80,12 +104,10 @@ export default function CreateAccountPage() {
         const errorMessage = axiosError.response.data as string;
         if (errorMessage.includes("Phone number already exists")) {
           toast.error("رقم الهاتف مسجل مسبقاً");
-        } else if (errorMessage.includes("Parent phone number already exists")) {
-          toast.error("رقم هاتف الوالد مسجل مسبقاً");
-        } else if (errorMessage.includes("Phone number cannot be the same as parent phone number")) {
-          toast.error("رقم الهاتف لا يمكن أن يكون نفس رقم هاتف الوالد");
         } else if (errorMessage.includes("Passwords do not match")) {
           toast.error("كلمات المرور غير متطابقة");
+        } else if (errorMessage.includes("Grade") || errorMessage.includes("الصف")) {
+          toast.error("يرجى اختيار الصف");
         } else {
           toast.error("حدث خطأ أثناء إنشاء الحساب");
         }
@@ -101,9 +123,9 @@ export default function CreateAccountPage() {
     setFormData({
       fullName: "",
       phoneNumber: "",
-      parentPhoneNumber: "",
       password: "",
       confirmPassword: "",
+      gradeTagId: "",
     });
     setCreatedUser(null);
   };
@@ -192,19 +214,25 @@ export default function CreateAccountPage() {
                       required
                     />
                   </div>
-                </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="parentPhoneNumber">رقم هاتف الوالد *</Label>
-                  <Input
-                    id="parentPhoneNumber"
-                    name="parentPhoneNumber"
-                    type="tel"
-                    value={formData.parentPhoneNumber}
-                    onChange={handleInputChange}
-                    placeholder="أدخل رقم هاتف الوالد"
-                    required
-                  />
+                  <div className="space-y-2">
+                    <Label htmlFor="gradeTagId">الصف *</Label>
+                    <Select
+                      value={formData.gradeTagId || undefined}
+                      onValueChange={(value) => setFormData((prev) => ({ ...prev, gradeTagId: value }))}
+                    >
+                      <SelectTrigger id="gradeTagId">
+                        <SelectValue placeholder="اختر الصف" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {courseTags.map((tag) => (
+                          <SelectItem key={tag.id} value={tag.id}>
+                            {tag.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -284,7 +312,7 @@ export default function CreateAccountPage() {
                 <div className="flex gap-4">
                   <Button
                     type="submit"
-                    disabled={isLoading || !passwordChecks.isValid}
+                    disabled={isLoading || !passwordChecks.isValid || !formData.gradeTagId}
                     className="flex-1 bg-brand hover:bg-brand/90 text-white"
                   >
                     {isLoading ? "جاري الإنشاء..." : "إنشاء الحساب"}

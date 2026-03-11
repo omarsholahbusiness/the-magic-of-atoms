@@ -44,6 +44,14 @@ export const authOptions: AuthOptions = {
           where: {
             phoneNumber: credentials.phoneNumber,
           },
+          select: {
+            id: true,
+            fullName: true,
+            phoneNumber: true,
+            hashedPassword: true,
+            role: true,
+            gradeTagId: true,
+          },
         });
 
         if (!user || !user.hashedPassword) {
@@ -64,6 +72,7 @@ export const authOptions: AuthOptions = {
           name: user.fullName,
           phoneNumber: user.phoneNumber,
           role: user.role,
+          gradeTagId: user.gradeTagId,
         } as any;
       },
     }),
@@ -88,6 +97,7 @@ export const authOptions: AuthOptions = {
         session.user.phoneNumber = token.phoneNumber;
         session.user.image = token.picture ?? undefined;
         session.user.role = token.role;
+        session.user.gradeTagId = token.gradeTagId ?? null;
       }
 
       return session;
@@ -102,6 +112,7 @@ export const authOptions: AuthOptions = {
           phoneNumber: user.phoneNumber,
           picture: (user as any).picture,
           role: user.role,
+          gradeTagId: (user as any).gradeTagId ?? null,
         };
       }
 

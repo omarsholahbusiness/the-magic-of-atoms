@@ -21,7 +21,7 @@ export async function PATCH(
             return new NextResponse("Forbidden", { status: 403 });
         }
 
-        const { fullName, phoneNumber, parentPhoneNumber, role } = await req.json();
+        const { fullName, phoneNumber, role, gradeTagId } = await req.json();
 
         // Check if user exists (teachers can edit all users)
         const existingUser = await db.user.findUnique({
@@ -51,28 +51,21 @@ export async function PATCH(
             }
         }
 
-        // Check if parent phone number is already taken by another user
-        if (parentPhoneNumber && parentPhoneNumber !== existingUser.parentPhoneNumber) {
-            const parentPhoneExists = await db.user.findFirst({
-                where: {
-                    parentPhoneNumber: parentPhoneNumber,
-                    id: {
-                        not: params.userId
-                    }
-                }
-            });
-
-            if (parentPhoneExists) {
-                return new NextResponse("Parent phone number already exists", { status: 400 });
-            }
-        }
-
         // Validate role (teachers can change to any role)
         if (role && !["USER", "TEACHER", "ADMIN"].includes(role)) {
             return new NextResponse("Invalid role", { status: 400 });
         }
 
-        // Update user (teachers can update basic info and change role)
+        if (gradeTagId !== undefined) {
+            if (gradeTagId !== null && typeof gradeTagId === "string" && gradeTagId.trim()) {
+                const tagExists = await db.courseTag.findUnique({ where: { id: gradeTagId.trim() } });
+                if (!tagExists) {
+                    return new NextResponse("Invalid grade tag", { status: 400 });
+                }
+            }
+        }
+
+        // Update user (teachers can update basic info, role, and grade tag)
         const updatedUser = await db.user.update({
             where: {
                 id: params.userId,
@@ -83,8 +76,8 @@ export async function PATCH(
             data: {
                 ...(fullName && { fullName }),
                 ...(phoneNumber && { phoneNumber }),
-                ...(parentPhoneNumber && { parentPhoneNumber }),
-                ...(role && { role })
+                ...(role && { role }),
+                ...(gradeTagId !== undefined && { gradeTagId: gradeTagId === null || gradeTagId === "" ? null : gradeTagId })
             }
         });
 

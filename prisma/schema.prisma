@@ -9,17 +9,38 @@ generator client {
   provider = "prisma-client-js"
 }
 
+model CourseTag {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  courses   CourseTagOnCourse[]
+  users     User[]
+}
+
+model CourseTagOnCourse {
+  courseId String
+  tagId    String
+  course   Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  tag      CourseTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([courseId, tagId])
+  @@index([tagId])
+}
+
 model User {
   id                      String    @id @default(uuid())
   fullName                String
   phoneNumber             String    @unique
-  parentPhoneNumber       String
   hashedPassword          String?
   image                   String?
   role                    String    @default("USER")
   balance                 Float     @default(0)
+  gradeTagId              String?
   createdAt               DateTime  @default(now())
   updatedAt               DateTime  @updatedAt
+  gradeTag                CourseTag? @relation(fields: [gradeTagId], references: [id], onDelete: SetNull)
   courses                 Course[]
   purchases               Purchase[]
   userProgress            UserProgress[]
@@ -30,6 +51,20 @@ model User {
   createdChapterCodes     ChapterCode[] @relation("ChapterCodeCreator")
   usedChapterCodes        ChapterCode[] @relation("ChapterCodeUser")
   chapterAccesses         ChapterAccess[]
+  pushSubscriptions       PushSubscription[]
+}
+
+model PushSubscription {
+  id        String   @id @default(uuid())
+  userId    String
+  endpoint  String   @db.Text
+  p256dh    String   @db.Text
+  auth      String   @db.Text
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, endpoint])
+  @@index([userId])
 }
 
 model Course {
@@ -42,6 +77,7 @@ model Course {
   isPublished Boolean @default(false)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tags CourseTagOnCourse[]
 
   attachments Attachment[]
   chapters Chapter[]

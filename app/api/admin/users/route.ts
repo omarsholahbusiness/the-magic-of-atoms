@@ -20,7 +20,6 @@ export async function GET(req: NextRequest) {
                 id: true,
                 fullName: true,
                 phoneNumber: true,
-                parentPhoneNumber: true,
                 role: true,
                 balance: true,
                 createdAt: true,

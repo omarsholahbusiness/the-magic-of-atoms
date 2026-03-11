@@ -43,9 +43,10 @@ interface User {
     id: string;
     fullName: string;
     phoneNumber: string;
-    parentPhoneNumber: string;
     role: string;
     balance: number;
+    gradeTagId?: string | null;
+    gradeTag?: { id: string; name: string } | null;
     createdAt: string;
     updatedAt: string;
     _count: {
@@ -58,9 +59,11 @@ interface User {
 interface EditUserData {
     fullName: string;
     phoneNumber: string;
-    parentPhoneNumber: string;
     role: string;
+    gradeTagId: string;
 }
+
+type CourseTagOption = { id: string; name: string };
 
 const UsersPage = () => {
     const [users, setUsers] = useState<User[]>([]);
@@ -70,14 +73,22 @@ const UsersPage = () => {
     const [editData, setEditData] = useState<EditUserData>({
         fullName: "",
         phoneNumber: "",
-        parentPhoneNumber: "",
-        role: ""
+        role: "",
+        gradeTagId: ""
     });
+    const [courseTags, setCourseTags] = useState<CourseTagOption[]>([]);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
 
     useEffect(() => {
         fetchUsers();
+    }, []);
+
+    useEffect(() => {
+        fetch("/api/course-tags")
+            .then((res) => res.ok ? res.json() : [])
+            .then(setCourseTags)
+            .catch(() => setCourseTags([]));
     }, []);
 
     const fetchUsers = async () => {
@@ -107,22 +118,32 @@ const UsersPage = () => {
         setEditData({
             fullName: user.fullName,
             phoneNumber: user.phoneNumber,
-            parentPhoneNumber: user.parentPhoneNumber,
-            role: user.role
+            role: user.role,
+            gradeTagId: user.gradeTagId ?? ""
         });
         setIsEditDialogOpen(true);
     };
 
-    const handleSaveUser = async () => {
-        if (!editingUser) return;
+  const handleSaveUser = async () => {
+    if (!editingUser) return;
 
-        try {
+    if (!editData.gradeTagId) {
+      toast.error("يرجى اختيار الصف");
+      return;
+    }
+
+    try {
             const response = await fetch(`/api/teacher/users/${editingUser.id}`, {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify(editData),
+                body: JSON.stringify({
+                    fullName: editData.fullName,
+                    phoneNumber: editData.phoneNumber,
+                    role: editData.role,
+                    gradeTagId: editData.gradeTagId || null
+                }),
             });
 
             if (response.ok) {
@@ -232,7 +253,6 @@ const UsersPage = () => {
                                 <TableRow>
                                     <TableHead className="text-right">الاسم</TableHead>
                                     <TableHead className="text-right">رقم الهاتف</TableHead>
-                                    <TableHead className="text-right">رقم هاتف الوالد</TableHead>
                                     <TableHead className="text-right">الدور</TableHead>
                                     <TableHead className="text-right">تاريخ التسجيل</TableHead>
                                     <TableHead className="text-right">الإجراءات</TableHead>
@@ -245,7 +265,6 @@ const UsersPage = () => {
                                             {user.fullName}
                                         </TableCell>
                                         <TableCell>{user.phoneNumber}</TableCell>
-                                        <TableCell>{user.parentPhoneNumber}</TableCell>
                                         <TableCell>
                                             <Badge 
                                                 variant="secondary"
@@ -310,17 +329,6 @@ const UsersPage = () => {
                                                                 />
                                                             </div>
                                                             <div className="grid grid-cols-4 items-center gap-4">
-                                                                <Label htmlFor="parentPhoneNumber" className="text-right">
-                                                                    رقم هاتف الوالد
-                                                                </Label>
-                                                                <Input
-                                                                    id="parentPhoneNumber"
-                                                                    value={editData.parentPhoneNumber}
-                                                                    onChange={(e) => setEditData({...editData, parentPhoneNumber: e.target.value})}
-                                                                    className="col-span-3"
-                                                                />
-                                                            </div>
-                                                            <div className="grid grid-cols-4 items-center gap-4">
                                                                 <Label htmlFor="role" className="text-right">
                                                                     الدور
                                                                 </Label>
@@ -334,7 +342,26 @@ const UsersPage = () => {
                                                                     <SelectContent>
                                                                         <SelectItem value="USER">طالب</SelectItem>
                                                                         <SelectItem value="TEACHER">معلم</SelectItem>
-                                                                        <SelectItem value="ADMIN">مشرف</SelectItem>
+                                                                    </SelectContent>
+                                                                </Select>
+                                                            </div>
+                                                            <div className="grid grid-cols-4 items-center gap-4">
+                                                                <Label htmlFor="gradeTagId" className="text-right">
+                                                                    الصف *
+                                                                </Label>
+                                                                <Select
+                                                                    value={editData.gradeTagId || undefined}
+                                                                    onValueChange={(value) => setEditData({...editData, gradeTagId: value})}
+                                                                >
+                                                                    <SelectTrigger className="col-span-3">
+                                                                        <SelectValue placeholder="اختر الصف" />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent>
+                                                                        {courseTags.map((tag) => (
+                                                                            <SelectItem key={tag.id} value={tag.id}>
+                                                                                {tag.name}
+                                                                            </SelectItem>
+                                                                        ))}
                                                                     </SelectContent>
                                                                 </Select>
                                                             </div>
@@ -346,7 +373,7 @@ const UsersPage = () => {
                                                             }}>
                                                                 إلغاء
                                                             </Button>
-                                                            <Button onClick={handleSaveUser}>
+                                                            <Button onClick={handleSaveUser} disabled={!editData.gradeTagId}>
                                                                 حفظ التغييرات
                                                             </Button>
                                                         </DialogFooter>
@@ -412,7 +439,6 @@ const UsersPage = () => {
                                 <TableRow>
                                     <TableHead className="text-right">الاسم</TableHead>
                                     <TableHead className="text-right">رقم الهاتف</TableHead>
-                                    <TableHead className="text-right">رقم هاتف الوالد</TableHead>
                                     <TableHead className="text-right">الدور</TableHead>
                                     <TableHead className="text-right">الرصيد</TableHead>
                                     <TableHead className="text-right">الكورسات المشتراة</TableHead>
@@ -427,7 +453,6 @@ const UsersPage = () => {
                                             {user.fullName}
                                         </TableCell>
                                         <TableCell>{user.phoneNumber}</TableCell>
-                                        <TableCell>{user.parentPhoneNumber}</TableCell>
                                         <TableCell>
                                             <Badge 
                                                 variant="secondary"
@@ -497,17 +522,6 @@ const UsersPage = () => {
                                                                 />
                                                             </div>
                                                             <div className="grid grid-cols-4 items-center gap-4">
-                                                                <Label htmlFor="parentPhoneNumber" className="text-right">
-                                                                    رقم هاتف الوالد
-                                                                </Label>
-                                                                <Input
-                                                                    id="parentPhoneNumber"
-                                                                    value={editData.parentPhoneNumber}
-                                                                    onChange={(e) => setEditData({...editData, parentPhoneNumber: e.target.value})}
-                                                                    className="col-span-3"
-                                                                />
-                                                            </div>
-                                                            <div className="grid grid-cols-4 items-center gap-4">
                                                                 <Label htmlFor="role" className="text-right">
                                                                     الدور
                                                                 </Label>
@@ -521,7 +535,26 @@ const UsersPage = () => {
                                                                     <SelectContent>
                                                                         <SelectItem value="USER">طالب</SelectItem>
                                                                         <SelectItem value="TEACHER">معلم</SelectItem>
-                                                                        <SelectItem value="ADMIN">مشرف</SelectItem>
+                                                                    </SelectContent>
+                                                                </Select>
+                                                            </div>
+                                                            <div className="grid grid-cols-4 items-center gap-4">
+                                                                <Label htmlFor="gradeTagId" className="text-right">
+                                                                    الصف *
+                                                                </Label>
+                                                                <Select
+                                                                    value={editData.gradeTagId || undefined}
+                                                                    onValueChange={(value) => setEditData({...editData, gradeTagId: value})}
+                                                                >
+                                                                    <SelectTrigger className="col-span-3">
+                                                                        <SelectValue placeholder="اختر الصف" />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent>
+                                                                        {courseTags.map((tag) => (
+                                                                            <SelectItem key={tag.id} value={tag.id}>
+                                                                                {tag.name}
+                                                                            </SelectItem>
+                                                                        ))}
                                                                     </SelectContent>
                                                                 </Select>
                                                             </div>
@@ -533,7 +566,7 @@ const UsersPage = () => {
                                                             }}>
                                                                 إلغاء
                                                             </Button>
-                                                            <Button onClick={handleSaveUser}>
+                                                            <Button onClick={handleSaveUser} disabled={!editData.gradeTagId}>
                                                                 حفظ التغييرات
                                                             </Button>
                                                         </DialogFooter>

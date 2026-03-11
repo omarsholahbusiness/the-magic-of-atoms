@@ -7,6 +7,7 @@ import { TitleForm } from "./_components/title-form";
 import { DescriptionForm } from "./_components/description-form";
 import { ImageForm } from "./_components/image-form";
 import { PriceForm } from "./_components/price-form";
+import { CourseTagsForm } from "./_components/course-tags-form";
 import { CourseContentForm } from "./_components/course-content-form";
 import { Banner } from "@/components/banner";
 import { Actions } from "./_components/actions";
@@ -40,6 +41,11 @@ export default async function CourseIdPage({
                     position: "asc",
                 },
             },
+            tags: {
+                include: {
+                    tag: { select: { id: true, name: true } },
+                },
+            },
         }
     });
 
@@ -57,7 +63,8 @@ export default async function CourseIdPage({
         course.description,
         course.imageUrl,
         course.price,
-        course.chapters.some(chapter => chapter.isPublished)
+        course.chapters.some(chapter => chapter.isPublished),
+        true // تحديد الصف: complete when specific tags OR "الكل" (no tags = visible to all)
     ];
 
     const totalFields = requiredFields.length;
@@ -73,7 +80,8 @@ export default async function CourseIdPage({
         description: !!course.description,
         imageUrl: !!course.imageUrl,
         price: course.price !== null && course.price !== undefined,
-        publishedChapters: course.chapters.some(chapter => chapter.isPublished)
+        publishedChapters: course.chapters.some(chapter => chapter.isPublished),
+        courseTags: true // true when tags set (specific grades or "الكل")
     };
 
     return (
@@ -116,6 +124,10 @@ export default async function CourseIdPage({
                                         <span>{completionStatus.publishedChapters ? '✓' : '✗'}</span>
                                         <span>فصل منشور</span>
                                     </div>
+                                    <div className={`flex items-center gap-1 ${completionStatus.courseTags ? 'text-brand' : 'text-red-600'}`}>
+                                        <span>{completionStatus.courseTags ? '✓' : '✗'}</span>
+                                        <span>تحديد الصف</span>
+                                    </div>
                                 </div>
                             </div>
                         )}
@@ -144,6 +156,10 @@ export default async function CourseIdPage({
                         />
                         <PriceForm
                             initialData={course}
+                            courseId={course.id}
+                        />
+                        <CourseTagsForm
+                            initialData={{ tags: course.tags?.map((t) => ({ tagId: t.tagId, tag: t.tag })) }}
                             courseId={course.id}
                         />
                     </div>

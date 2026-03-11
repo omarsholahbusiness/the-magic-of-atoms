@@ -10,6 +10,7 @@ import { PlyrVideoPlayer } from "@/components/plyr-video-player";
 import Link from "next/link";
 import Image from "next/image";
 import { Course, Purchase, Chapter } from "@prisma/client";
+import { NotificationPrompt } from "./_components/notification-prompt";
 
 type CourseWithProgress = Course & {
   chapters: { id: string }[];
@@ -49,10 +50,10 @@ const CoursesPage = async () => {
     return redirect(dashboardUrl);
   }
 
-  // Get user's current balance
+  // Get user's current balance and grade tag (for course filtering)
   const user = await db.user.findUnique({
     where: { id: session.user.id },
-    select: { balance: true }
+    select: { balance: true, gradeTagId: true }
   });
 
   // Get last watched chapter
@@ -165,57 +166,69 @@ const CoursesPage = async () => {
     averageScore
   };
 
-  const courses = await db.course.findMany({
-    where: {
-      OR: [
-        {
-          purchases: {
-            some: {
-              userId: session.user.id,
-              status: "ACTIVE"
-            }
-          }
-        },
-        {
-          chapters: {
-            some: {
-              chapterAccesses: {
+  // Students see courses that: (1) match their grade tag, or (2) have no tags ("الكل" = visible to all)
+  const gradeTagId = user?.gradeTagId;
+  const courses = await (gradeTagId
+    ? db.course.findMany({
+        where: {
+          OR: [
+            {
+              purchases: {
                 some: {
-                  userId: session.user.id
+                  userId: session.user.id,
+                  status: "ACTIVE"
+                }
+              }
+            },
+            {
+              chapters: {
+                some: {
+                  chapterAccesses: {
+                    some: {
+                      userId: session.user.id
+                    }
+                  }
                 }
               }
             }
+          ],
+          AND: [
+            {
+              OR: [
+                { tags: { none: {} } },
+                { tags: { some: { tagId: gradeTagId } } }
+              ]
+            }
+          ]
+        },
+        include: {
+          chapters: {
+            where: {
+              isPublished: true,
+            },
+            select: {
+              id: true,
+            }
+          },
+          quizzes: {
+            where: {
+              isPublished: true,
+            },
+            select: {
+              id: true,
+            }
+          },
+          purchases: {
+            where: {
+              userId: session.user.id,
+            }
           }
-        }
-      ]
-    },
-    include: {
-      chapters: {
-        where: {
-          isPublished: true,
         },
-        select: {
-          id: true,
+        orderBy: {
+          createdAt: "desc",
         }
-      },
-      quizzes: {
-        where: {
-          isPublished: true,
-        },
-        select: {
-          id: true,
-        }
-      },
-      purchases: {
-        where: {
-          userId: session.user.id,
-        }
-      }
-    },
-    orderBy: {
-      createdAt: "desc",
-    }
-  });
+      })
+    : Promise.resolve([]));
 
   const coursesWithProgress = await Promise.all(
     courses.map(async (course) => {
@@ -289,9 +302,12 @@ const CoursesPage = async () => {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">مرحباً بك في لوحة التحكم</h1>
-        <p className="text-muted-foreground">طريقك للنجاح و التفوق</p>
+      <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold mb-2">مرحباً بك في لوحة التحكم</h1>
+          <p className="text-muted-foreground">طريقك للنجاح و التفوق</p>
+        </div>
+        <NotificationPrompt />
       </div>
 
       {/* Stats and Balance Row */}

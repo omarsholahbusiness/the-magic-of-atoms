@@ -18,7 +18,7 @@ export async function PATCH(
             return new NextResponse("Forbidden", { status: 403 });
         }
 
-        const { fullName, phoneNumber, parentPhoneNumber, role } = await req.json();
+        const { fullName, phoneNumber, role } = await req.json();
 
         // Check if user exists
         const existingUser = await db.user.findUnique({
@@ -44,22 +44,6 @@ export async function PATCH(
             }
         }
 
-        // Check if parent phone number is already taken by another user
-        if (parentPhoneNumber && parentPhoneNumber !== existingUser.parentPhoneNumber) {
-            const parentPhoneExists = await db.user.findFirst({
-                where: {
-                    parentPhoneNumber: parentPhoneNumber,
-                    id: {
-                        not: params.userId
-                    }
-                }
-            });
-
-            if (parentPhoneExists) {
-                return new NextResponse("Parent phone number already exists", { status: 400 });
-            }
-        }
-
         // Update user
         const updatedUser = await db.user.update({
             where: {
@@ -68,7 +52,6 @@ export async function PATCH(
             data: {
                 ...(fullName && { fullName }),
                 ...(phoneNumber && { phoneNumber }),
-                ...(parentPhoneNumber && { parentPhoneNumber }),
                 ...(role && { role })
             }
         });

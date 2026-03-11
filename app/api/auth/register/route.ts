@@ -29,10 +29,19 @@ async function verifyRecaptcha(token: string): Promise<boolean> {
 
 export async function POST(req: Request) {
   try {
-    const { fullName, phoneNumber, parentPhoneNumber, password, confirmPassword, recaptchaToken } = await req.json();
+    const { fullName, phoneNumber, password, confirmPassword, recaptchaToken, gradeTagId } = await req.json();
 
-    if (!fullName || !phoneNumber || !parentPhoneNumber || !password || !confirmPassword) {
+    if (!fullName || !phoneNumber || !password || !confirmPassword) {
       return new NextResponse("Missing required fields", { status: 400 });
+    }
+
+    if (gradeTagId != null && typeof gradeTagId === "string" && gradeTagId.trim()) {
+      const tagExists = await db.courseTag.findUnique({
+        where: { id: gradeTagId.trim() },
+      });
+      if (!tagExists) {
+        return new NextResponse("Invalid grade tag", { status: 400 });
+      }
     }
 
     // Verify reCAPTCHA token
@@ -49,28 +58,13 @@ export async function POST(req: Request) {
       return new NextResponse("Passwords do not match", { status: 400 });
     }
 
-    // Check if phone number is the same as parent phone number
-    if (phoneNumber === parentPhoneNumber) {
-      return new NextResponse("Phone number cannot be the same as parent phone number", { status: 400 });
-    }
-
     // Check if user already exists
     const existingUser = await db.user.findFirst({
-      where: {
-        OR: [
-          { phoneNumber },
-          { parentPhoneNumber }
-        ]
-      },
+      where: { phoneNumber },
     });
 
     if (existingUser) {
-      if (existingUser.phoneNumber === phoneNumber) {
-        return new NextResponse("Phone number already exists", { status: 400 });
-      }
-      if (existingUser.parentPhoneNumber === parentPhoneNumber) {
-        return new NextResponse("Parent phone number already exists", { status: 400 });
-      }
+      return new NextResponse("Phone number already exists", { status: 400 });
     }
 
     // Hash password (no complexity requirements)
@@ -81,9 +75,9 @@ export async function POST(req: Request) {
       data: {
         fullName,
         phoneNumber,
-        parentPhoneNumber,
         hashedPassword,
         role: "USER",
+        gradeTagId: gradeTagId && typeof gradeTagId === "string" && gradeTagId.trim() ? gradeTagId.trim() : null,
       },
     });
 

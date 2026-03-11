@@ -43,7 +43,6 @@ interface User {
     id: string;
     fullName: string;
     phoneNumber: string;
-    parentPhoneNumber: string;
     role: string;
     balance: number;
     createdAt: string;
@@ -58,7 +57,6 @@ interface User {
 interface EditUserData {
     fullName: string;
     phoneNumber: string;
-    parentPhoneNumber: string;
     role: string;
 }
 
@@ -70,7 +68,6 @@ const UsersPage = () => {
     const [editData, setEditData] = useState<EditUserData>({
         fullName: "",
         phoneNumber: "",
-        parentPhoneNumber: "",
         role: ""
     });
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -100,7 +97,6 @@ const UsersPage = () => {
         setEditData({
             fullName: user.fullName,
             phoneNumber: user.phoneNumber,
-            parentPhoneNumber: user.parentPhoneNumber,
             role: user.role
         });
         setIsEditDialogOpen(true);
@@ -200,7 +196,6 @@ const UsersPage = () => {
                                 <TableRow>
                                     <TableHead className="text-right">الاسم</TableHead>
                                     <TableHead className="text-right">رقم الهاتف</TableHead>
-                                    <TableHead className="text-right">رقم هاتف الوالد</TableHead>
                                     <TableHead className="text-right">الدور</TableHead>
                                     <TableHead className="text-right">تاريخ التسجيل</TableHead>
                                     <TableHead className="text-right">الإجراءات</TableHead>
@@ -213,7 +208,6 @@ const UsersPage = () => {
                                             {user.fullName}
                                         </TableCell>
                                         <TableCell>{user.phoneNumber}</TableCell>
-                                        <TableCell>{user.parentPhoneNumber}</TableCell>
                                         <TableCell>
                                             <Badge 
                                                 variant="secondary"
@@ -274,17 +268,6 @@ const UsersPage = () => {
                                                                     id="phoneNumber"
                                                                     value={editData.phoneNumber}
                                                                     onChange={(e) => setEditData({...editData, phoneNumber: e.target.value})}
-                                                                    className="col-span-3"
-                                                                />
-                                                            </div>
-                                                            <div className="grid grid-cols-4 items-center gap-4">
-                                                                <Label htmlFor="parentPhoneNumber" className="text-right">
-                                                                    رقم هاتف الوالد
-                                                                </Label>
-                                                                <Input
-                                                                    id="parentPhoneNumber"
-                                                                    value={editData.parentPhoneNumber}
-                                                                    onChange={(e) => setEditData({...editData, parentPhoneNumber: e.target.value})}
                                                                     className="col-span-3"
                                                                 />
                                                             </div>
@@ -380,7 +363,6 @@ const UsersPage = () => {
                                 <TableRow>
                                     <TableHead className="text-right">الاسم</TableHead>
                                     <TableHead className="text-right">رقم الهاتف</TableHead>
-                                    <TableHead className="text-right">رقم هاتف الوالد</TableHead>
                                     <TableHead className="text-right">الدور</TableHead>
                                     <TableHead className="text-right">الرصيد</TableHead>
                                     <TableHead className="text-right">الكورسات المشتراة</TableHead>
@@ -395,7 +377,6 @@ const UsersPage = () => {
                                             {user.fullName}
                                         </TableCell>
                                         <TableCell>{user.phoneNumber}</TableCell>
-                                        <TableCell>{user.parentPhoneNumber}</TableCell>
                                         <TableCell>
                                             <Badge variant="secondary">
                                                 طالب
@@ -458,17 +439,6 @@ const UsersPage = () => {
                                                                     id="phoneNumber"
                                                                     value={editData.phoneNumber}
                                                                     onChange={(e) => setEditData({...editData, phoneNumber: e.target.value})}
-                                                                    className="col-span-3"
-                                                                />
-                                                            </div>
-                                                            <div className="grid grid-cols-4 items-center gap-4">
-                                                                <Label htmlFor="parentPhoneNumber" className="text-right">
-                                                                    رقم هاتف الوالد
-                                                                </Label>
-                                                                <Input
-                                                                    id="parentPhoneNumber"
-                                                                    value={editData.parentPhoneNumber}
-                                                                    onChange={(e) => setEditData({...editData, parentPhoneNumber: e.target.value})}
                                                                     className="col-span-3"
                                                                 />
                                                             </div>

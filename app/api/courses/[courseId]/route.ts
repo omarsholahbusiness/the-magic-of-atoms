@@ -73,11 +73,18 @@ export async function PATCH(
             ? { id: resolvedParams.courseId }
             : { id: resolvedParams.courseId, userId };
 
+        const { tagIds, ...restValues } = values as { tagIds?: string[]; [k: string]: unknown };
+        const data: Record<string, unknown> = { ...restValues };
+        if (Array.isArray(tagIds)) {
+            data.tags = {
+                deleteMany: {},
+                create: tagIds.map((tagId: string) => ({ tag: { connect: { id: tagId } } })),
+            };
+        }
+
         const course = await db.course.update({
             where: whereClause,
-            data: {
-                ...values,
-            }
+            data: data as Parameters<typeof db.course.update>[0]["data"],
         });
 
         return NextResponse.json(course);

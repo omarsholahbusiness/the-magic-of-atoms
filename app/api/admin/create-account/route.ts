@@ -17,9 +17,9 @@ export async function POST(req: Request) {
       return new NextResponse("Forbidden - Admin access required", { status: 403 });
     }
 
-    const { fullName, phoneNumber, parentPhoneNumber, password, confirmPassword } = await req.json();
+    const { fullName, phoneNumber, password, confirmPassword } = await req.json();
 
-    if (!fullName || !phoneNumber || !parentPhoneNumber || !password || !confirmPassword) {
+    if (!fullName || !phoneNumber || !password || !confirmPassword) {
       return new NextResponse("Missing required fields", { status: 400 });
     }
 
@@ -27,28 +27,13 @@ export async function POST(req: Request) {
       return new NextResponse("Passwords do not match", { status: 400 });
     }
 
-    // Check if phone number is the same as parent phone number
-    if (phoneNumber === parentPhoneNumber) {
-      return new NextResponse("Phone number cannot be the same as parent phone number", { status: 400 });
-    }
-
     // Check if user already exists
     const existingUser = await db.user.findFirst({
-      where: {
-        OR: [
-          { phoneNumber },
-          { parentPhoneNumber }
-        ]
-      },
+      where: { phoneNumber },
     });
 
     if (existingUser) {
-      if (existingUser.phoneNumber === phoneNumber) {
-        return new NextResponse("Phone number already exists", { status: 400 });
-      }
-      if (existingUser.parentPhoneNumber === parentPhoneNumber) {
-        return new NextResponse("Parent phone number already exists", { status: 400 });
-      }
+      return new NextResponse("Phone number already exists", { status: 400 });
     }
 
     // Hash password
@@ -59,7 +44,6 @@ export async function POST(req: Request) {
       data: {
         fullName,
         phoneNumber,
-        parentPhoneNumber,
         hashedPassword,
         role: "USER", // Always create as student
       },
